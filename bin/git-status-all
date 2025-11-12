@@ -1,0 +1,57 @@
+#!/bin/bash
+# Git repository status checker for multiple repositories
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Default directory is current directory
+SEARCH_DIR="${1:-.}"
+
+echo -e "${GREEN}Checking git repositories in: ${SEARCH_DIR}${NC}\n"
+
+# Find all git repositories
+find "$SEARCH_DIR" -maxdepth 3 -type d -name .git 2>/dev/null | while read -r git_dir; do
+    repo_dir=$(dirname "$git_dir")
+    repo_name=$(basename "$repo_dir")
+    
+    echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${YELLOW}Repository:${NC} $repo_name"
+    echo -e "${YELLOW}Path:${NC} $repo_dir"
+    
+    cd "$repo_dir" || continue
+    
+    # Get current branch
+    branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+    echo -e "${YELLOW}Branch:${NC} $branch"
+    
+    # Check for uncommitted changes
+    if ! git diff-index --quiet HEAD -- 2>/dev/null; then
+        echo -e "${RED}Status:${NC} Uncommitted changes"
+    else
+        echo -e "${GREEN}Status:${NC} Clean"
+    fi
+    
+    # Check for unpushed commits
+    if git rev-parse --abbrev-ref --symbolic-full-name @{u} &>/dev/null; then
+        unpushed=$(git log @{u}.. --oneline 2>/dev/null | wc -l)
+        if [ "$unpushed" -gt 0 ]; then
+            echo -e "${YELLOW}Unpushed commits:${NC} $unpushed"
+        fi
+        
+        # Check for unpulled commits
+        unpulled=$(git log ..@{u} --oneline 2>/dev/null | wc -l)
+        if [ "$unpulled" -gt 0 ]; then
+            echo -e "${YELLOW}Unpulled commits:${NC} $unpulled"
+        fi
+    else
+        echo -e "${YELLOW}Remote:${NC} No upstream branch"
+    fi
+    
+    echo
+done
+
+echo -e "${GREEN}Check complete!${NC}"

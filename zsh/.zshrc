@@ -16,22 +16,12 @@ compinit
 # Enable colors
 autoload -U colors && colors
 
-# Aliases
-alias ll='ls -lah'
-alias la='ls -A'
-alias l='ls -CF'
-alias ..='cd ..'
-alias ...='cd ../..'
-alias grep='grep --color=auto'
-
-# Git aliases
-alias gs='git status'
-alias ga='git add'
-alias gc='git commit'
-alias gp='git push'
-alias gl='git pull'
-alias gd='git diff'
-alias gco='git checkout'
+# Load shared configuration (aliases, exports, functions)
+if [ -f ~/.dotfiles/shared/.env.sh ]; then
+    source ~/.dotfiles/shared/.env.sh
+elif [ -f ~/dotfiles/shared/.env.sh ]; then
+    source ~/dotfiles/shared/.env.sh
+fi
 
 # Load Starship prompt if available
 if command -v starship &> /dev/null; then

@@ -18,6 +18,8 @@ help:
 	@echo "  link-tmux      - Install tmux configuration"
 	@echo "  link-starship  - Install starship configuration"
 	@echo "  link-ssh       - Install ssh configuration"
+	@echo "  link-shared    - Install shared scripts and functions"
+	@echo "  link-bin       - Install utility scripts"
 	@echo ""
 	@echo "Usage examples:"
 	@echo "  make install          # Install all configurations"
@@ -34,6 +36,8 @@ link:
 	@stow -v -t ${HOME} zsh
 	@stow -v -t ${HOME} tmux
 	@stow -v -t ${HOME} starship
+	@stow -v -t ${HOME} shared
+	@stow -v -t ${HOME} bin
 	@mkdir -p ${HOME}/.ssh
 	@stow -v -t ${HOME}/.ssh ssh
 	@chmod 600 ${HOME}/.ssh/config 2>/dev/null || true
@@ -46,6 +50,8 @@ unlink:
 	@stow -v -D -t ${HOME} zsh 2>/dev/null || true
 	@stow -v -D -t ${HOME} tmux 2>/dev/null || true
 	@stow -v -D -t ${HOME} starship 2>/dev/null || true
+	@stow -v -D -t ${HOME} shared 2>/dev/null || true
+	@stow -v -D -t ${HOME} bin 2>/dev/null || true
 	@stow -v -D -t ${HOME}/.ssh ssh 2>/dev/null || true
 	@echo "✓ Dotfiles removed successfully!"
 
@@ -106,3 +112,19 @@ unlink-starship:
 unlink-ssh:
 	@stow -v -D -t ${HOME}/.ssh ssh
 	@echo "✓ SSH configuration removed!"
+
+link-shared:
+	@stow -v -t ${HOME} shared
+	@echo "✓ Shared scripts and functions installed!"
+
+link-bin:
+	@stow -v -t ${HOME} bin
+	@echo "✓ Utility scripts installed!"
+
+unlink-shared:
+	@stow -v -D -t ${HOME} shared
+	@echo "✓ Shared scripts and functions removed!"
+
+unlink-bin:
+	@stow -v -D -t ${HOME} bin
+	@echo "✓ Utility scripts removed!"

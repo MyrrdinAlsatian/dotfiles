@@ -1,0 +1,104 @@
+#!/bin/bash
+# Shell aliases - shared across different shells
+
+# Navigation
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+alias ~='cd ~'
+alias -- -='cd -'
+
+# List directory contents
+alias ll='ls -lAh'
+alias la='ls -A'
+alias l='ls -CF'
+alias lt='ls -lAht'  # Sort by modification time
+alias lsize='ls -lAhS'  # Sort by size
+
+# Colorize output
+alias grep='grep --color=auto'
+alias fgrep='fgrep --color=auto'
+alias egrep='egrep --color=auto'
+alias diff='diff --color=auto'
+
+# Safety features
+alias rm='rm -i'
+alias cp='cp -i'
+alias mv='mv -i'
+alias mkdir='mkdir -pv'
+
+# Git shortcuts
+alias gs='git status'
+alias ga='git add'
+alias gaa='git add --all'
+alias gc='git commit'
+alias gcm='git commit -m'
+alias gca='git commit --amend'
+alias gp='git push'
+alias gpl='git pull'
+alias gd='git diff'
+alias gds='git diff --staged'
+alias gl='git log --oneline --graph --decorate'
+alias gco='git checkout'
+alias gb='git branch'
+alias gba='git branch -a'
+alias gm='git merge'
+alias gr='git remote -v'
+alias gf='git fetch'
+alias gst='git stash'
+alias gstp='git stash pop'
+
+# Docker shortcuts
+alias d='docker'
+alias dc='docker-compose'
+alias dps='docker ps'
+alias dpsa='docker ps -a'
+alias di='docker images'
+alias drm='docker rm'
+alias drmi='docker rmi'
+alias dex='docker exec -it'
+alias dlog='docker logs -f'
+alias dclean='docker system prune -af'
+
+# System
+alias update='sudo apt update && sudo apt upgrade -y'
+alias ports='netstat -tulanp'
+alias myip='curl -s http://ipecho.net/plain; echo'
+alias path='echo -e ${PATH//:/\\n}'
+alias now='date +"%Y-%m-%d %T"'
+alias week='date +%V'
+
+# Disk usage
+alias du='du -h'
+alias df='df -h'
+alias ducks='du -cks * | sort -rn | head'  # Show top 10 largest directories
+
+# Process management
+alias psg='ps aux | grep -v grep | grep -i -e VSZ -e'
+alias topcpu='ps aux --sort=-%cpu | head -10'
+alias topmem='ps aux --sort=-%mem | head -10'
+
+# Network
+alias pingg='ping -c 3 google.com'
+alias speedtest='curl -s https://raw.githubusercontent.com/sivel/speedtest-cli/master/speedtest.py | python -'
+
+# File operations
+alias h='history'
+alias c='clear'
+alias reload='source ~/.zshrc || source ~/.bashrc'
+
+# Safety aliases for common typos
+alias sl='ls'
+alias mdkir='mkdir'
+alias gut='git'
+
+# Quick edits
+alias edit-aliases='${EDITOR:-vim} ~/.aliases'
+alias edit-functions='${EDITOR:-vim} ~/.functions'
+alias edit-exports='${EDITOR:-vim} ~/.exports'
+
+# WSL specific
+if grep -qi microsoft /proc/version 2>/dev/null; then
+    alias open='explorer.exe'
+    alias pbcopy='clip.exe'
+fi

@@ -130,6 +130,18 @@ dotfiles/
 │   └── .starship.toml       # Starship prompt configuration
 ├── ssh/
 │   └── config               # SSH client configuration
+├── shared/                  # Shared shell configuration
+│   ├── .aliases             # Shell aliases (cross-shell compatible)
+│   ├── .exports             # Environment variables
+│   ├── .functions           # Custom shell functions
+│   ├── .env.sh              # Loader script for all shared configs
+│   └── .local               # Local overrides (gitignored)
+├── bin/                     # Utility scripts
+│   ├── sysinfo              # Display system information
+│   ├── git-status-all       # Check status of multiple git repos
+│   ├── backup               # Backup files and directories
+│   ├── note                 # Quick note-taking utility
+│   └── check-port           # Check if a port is in use
 ├── Makefile                 # Automation scripts
 ├── README.md                # This file
 └── .gitignore               # Files to exclude from git
@@ -141,6 +153,30 @@ When you run `stow -t $HOME git`, Stow creates a symlink:
 - `~/dotfiles/git/.gitconfig` → `~/.gitconfig`
 
 Each subdirectory (git, zsh, tmux, etc.) is a "package" that Stow can manage independently.
+
+### Shared Configuration
+
+The `shared/` directory contains shell configurations that work across different shells (bash, zsh):
+
+- **`.aliases`**: Common aliases for navigation, git, docker, and more
+- **`.exports`**: Environment variables (PATH, EDITOR, history settings)
+- **`.functions`**: Useful shell functions (mkcd, extract, backup, etc.)
+- **`.env.sh`**: Main loader that sources all shared configs
+- **`.local`**: Local overrides (gitignored, for machine-specific settings)
+
+The zsh configuration automatically loads these via `.env.sh`.
+
+### Utility Scripts
+
+The `bin/` directory contains useful utility scripts:
+
+- **`sysinfo`**: Display detailed system information
+- **`git-status-all`**: Check git status of multiple repositories
+- **`backup`**: Easy backup utility for files and directories
+- **`note`**: Quick note-taking with timestamps
+- **`check-port`**: Check if a port is in use
+
+After installation, these scripts are available in your PATH.
 
 ## ✅ Best Practices
 
