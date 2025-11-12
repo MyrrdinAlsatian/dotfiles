@@ -1,0 +1,41 @@
+# SSH Client Configuration
+# Global defaults for all hosts
+Host *
+    # Use SSH2 protocol
+    Protocol 2
+    
+    # Keep connections alive
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+    
+    # Connection sharing for performance
+    ControlMaster auto
+    ControlPath ~/.ssh/sockets/%r@%h-%p
+    ControlPersist 600
+    
+    # Security settings
+    ForwardAgent no
+    ForwardX11 no
+    
+    # Compression
+    Compression yes
+    
+    # Prefer IPv4
+    AddressFamily inet
+
+# Example host configuration (uncomment and modify as needed)
+# Host github.com
+#     HostName github.com
+#     User git
+#     IdentityFile ~/.ssh/id_ed25519_github
+#     IdentitiesOnly yes
+
+# Host myserver
+#     HostName example.com
+#     User username
+#     Port 22
+#     IdentityFile ~/.ssh/id_rsa
+#     IdentitiesOnly yes
+
+# Include local configurations if they exist
+Include config.local
