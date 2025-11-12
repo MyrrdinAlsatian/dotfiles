@@ -16,7 +16,9 @@ ssh/authorized_keys
 *.local
 *_local
 .env
+!.env.sh
 .env.*
+!.env.sh
 secrets/
 *.secret
 
