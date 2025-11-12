@@ -35,8 +35,8 @@ export MANPAGER='less -s -M +Gg'
 [ -d "$HOME/.local/bin" ] && export PATH="$HOME/.local/bin:$PATH"
 [ -d "$HOME/bin" ] && export PATH="$HOME/bin:$PATH"
 
-# Add dotfiles bin directory
-[ -d "$HOME/.dotfiles/bin" ] && export PATH="$HOME/.dotfiles/bin:$PATH"
+# Add dotfiles bin directory (now inside shared)
+[ -d "$HOME/.dotfiles/shared/bin" ] && export PATH="$HOME/.dotfiles/shared/bin:$PATH"
 
 # Development tools
 # Node.js

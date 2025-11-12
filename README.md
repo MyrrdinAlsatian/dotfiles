@@ -135,13 +135,13 @@ dotfiles/
 │   ├── .exports             # Environment variables
 │   ├── .functions           # Custom shell functions
 │   ├── .env.sh              # Loader script for all shared configs
-│   └── .local               # Local overrides (gitignored)
-├── bin/                     # Utility scripts
-│   ├── sysinfo              # Display system information
-│   ├── git-status-all       # Check status of multiple git repos
-│   ├── backup               # Backup files and directories
-│   ├── note                 # Quick note-taking utility
-│   └── check-port           # Check if a port is in use
+│   ├── .local               # Local overrides (gitignored)
+│   └── bin/                 # Utility scripts
+│       ├── sysinfo          # Display system information
+│       ├── git-status-all   # Check status of multiple git repos
+│       ├── backup           # Backup files and directories
+│       ├── note             # Quick note-taking utility
+│       └── check-port       # Check if a port is in use
 ├── Makefile                 # Automation scripts
 ├── README.md                # This file
 └── .gitignore               # Files to exclude from git
@@ -163,12 +163,13 @@ The `shared/` directory contains shell configurations that work across different
 - **`.functions`**: Useful shell functions (mkcd, extract, backup, etc.)
 - **`.env.sh`**: Main loader that sources all shared configs
 - **`.local`**: Local overrides (gitignored, for machine-specific settings)
+- **`bin/`**: Utility scripts (sysinfo, git-status-all, backup, note, check-port)
 
 The zsh configuration automatically loads these via `.env.sh`.
 
 ### Utility Scripts
 
-The `bin/` directory contains useful utility scripts:
+The `shared/bin/` directory contains useful utility scripts:
 
 - **`sysinfo`**: Display detailed system information
 - **`git-status-all`**: Check git status of multiple repositories
