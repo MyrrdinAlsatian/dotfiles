@@ -1,6 +1,6 @@
 # Path to your oh-my-zsh installation.
-# export ZSH="$HOME/.oh-my-zsh"
-
+export ZSH="$HOME/.oh-my-zsh"
+# export DOTFILES="$HOME/dotfiles"
 # History configuration
 HISTFILE=~/.zsh_history
 HISTSIZE=10000
@@ -8,6 +8,17 @@ SAVEHIST=10000
 setopt SHARE_HISTORY
 setopt HIST_IGNORE_DUPS
 setopt HIST_IGNORE_SPACE
+
+source $ZSH/oh-my-zsh.sh
+source <(docker completion zsh)
+source ~/.nvm/nvm.sh
+
+# if [ -d "$DOTFILES/zsh/completion" ]; then
+#     # Charger le fichier de complétion de Scalingo
+#     source "$DOTFILES/zsh/completion/scalingo_complete.zsh"
+# else
+#     echo "Le répertoire de complétion Scalingo n'a pas été trouvé."
+# fi
 
 # Completion system
 autoload -Uz compinit
