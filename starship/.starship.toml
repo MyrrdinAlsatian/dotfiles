@@ -3,21 +3,40 @@
 "$schema" = 'https://starship.rs/config-schema.json'
 
 # Timeout for commands executed by starship (in milliseconds)
-command_timeout = 500
+command_timeout = 1000
 
 # Format string
 format = """
-[┌───────────────────>](bold green)
-[│](bold green)$username\
-$hostname\
+$character\
+$os$hostname\
 $directory\
 $git_branch\
-$git_status\
+$git_status \
 $python\
+$aws\
+$golang\
+$java\
 $nodejs\
 $rust\
-$golang\
-$docker_context
+$elixir\
+$elm\
+$erlang\
+$ruby\
+$kotlin\
+$gradle\
+$scala\
+$dart\
+$conda\
+$pijul_channel\
+$lua\
+$rlang\
+$php\
+$package\
+$buf\
+$memory_usage\
+$kubernetes\
+$docker_context\
+[](#1C3A5E)$time[ ](#1C3A5E)$cmd_duration
 [└─>](bold green) """
 
 # Wait 10 milliseconds for starship to check files under the current directory
@@ -25,6 +44,7 @@ scan_timeout = 10
 
 # Disable the blank line at the start of the prompt
 add_newline = true
+continuation_prompt = '▶▶ '
 
 [username]
 style_user = "green bold"
@@ -51,17 +71,16 @@ style = "bold purple"
 
 [git_status]
 format = '([\[$all_status$ahead_behind\]]($style) )'
-style = "bold red"
 conflicted = "🏳"
-ahead = "⇡${count}"
-behind = "⇣${count}"
-diverged = "⇕⇡${ahead_count}⇣${behind_count}"
-untracked = "?${count}"
+ahead = "🏎💨${count}"
+behind = "😰${count}"
+diverged = "😵${ahead_count}⇣${behind_count}"
+untracked = "🤷${count}"
 stashed = "$${count}"
-modified = "!${count}"
-staged = "+${count}"
+modified = "📝${count}"
+staged = '[++\($count\)](green)'
 renamed = "»${count}"
-deleted = "✘${count}"
+deleted = "🗑${count}"
 
 [python]
 symbol = " "
@@ -95,5 +114,23 @@ time_format = "%T"
 style = "bold white"
 
 [character]
-success_symbol = "[➜](bold green)"
-error_symbol = "[➜](bold red)"
+success_symbol = '[➜](bold green)'
+error_symbol = '[✗](bold red) '
+
+[package]
+disabled = true
+
+[cmd_duration]
+min_time = 5000
+format = 'underwent [$duration](bold yellow)'
+
+[aws]
+disabled = true
+
+[azure]
+format = 'on [$symbol($subscription)]($style) '
+disabled = true
+
+[gcloud]
+disabled = true
+
