@@ -191,3 +191,43 @@ cdiff() {
 gitup() {
     find . -maxdepth 1 -type d -exec sh -c '(cd {} && git pull 2>/dev/null)' \;
 }
+
+# Git pull request info
+git-pr-info() {
+  BASE_BRANCH=$(git branch -r \
+    | grep -E 'origin/(main|develop|master)' \
+    | grep -v 'HEAD ->' \
+    | head -n 1 \
+    | sed 's/origin\///' \
+    | tr -d '[:space:]')
+  
+  OUTPUT=$(git log origin/$BASE_BRANCH..HEAD --oneline --name-only --pretty=format:"---%n%h %s%n%b%n Fichiers : %n")
+
+ if [ -z "$OUTPUT" ]; then
+    echo "✅ Aucun nouveau commit par rapport à origin/$BASE_BRANCH"
+    return
+  fi
+
+  echo "📘 Base détectée : $BASE_BRANCH"
+  echo ""
+
+    # Gestion de l’option --copy
+  if [[ "$1" == "--copy" ]]; then
+    # Copie dans le presse-papiers selon l’OS
+    if command -v pbcopy >/dev/null 2>&1; then
+      echo "$OUTPUT" | pbcopy
+      echo "📋 Commits copiés dans le presse-papiers (macOS)"
+    elif command -v xclip >/dev/null 2>&1; then
+      echo "$OUTPUT" | xclip -selection clipboard
+      echo "📋 Commits copiés dans le presse-papiers (Linux/xclip)"
+    elif command -v wl-copy >/dev/null 2>&1; then
+      echo "$OUTPUT" | wl-copy
+      echo "📋 Commits copiés dans le presse-papiers (Linux/Wayland)"
+    else
+      echo "⚠️ Impossible de copier : aucun utilitaire de presse-papiers trouvé"
+    fi
+  else
+    # Sinon, on affiche simplement dans le terminal
+    echo "$OUTPUT"
+  fi
+}
