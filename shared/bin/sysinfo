@@ -1,0 +1,75 @@
+#!/bin/bash
+# System information display script
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${GREEN}              SYSTEM INFORMATION${NC}"
+echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo
+
+# Hostname
+echo -e "${YELLOW}Hostname:${NC} $(hostname)"
+
+# OS Information
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    echo -e "${YELLOW}OS:${NC} $PRETTY_NAME"
+fi
+
+# Kernel
+echo -e "${YELLOW}Kernel:${NC} $(uname -r)"
+
+# Uptime
+echo -e "${YELLOW}Uptime:${NC} $(uptime -p 2>/dev/null || uptime)"
+
+# Current User
+echo -e "${YELLOW}User:${NC} $(whoami)"
+
+echo
+
+# CPU Info
+echo -e "${BLUE}CPU Information:${NC}"
+if [ -f /proc/cpuinfo ]; then
+    cpu_model=$(grep "model name" /proc/cpuinfo | head -1 | cut -d':' -f2 | xargs)
+    cpu_cores=$(grep -c processor /proc/cpuinfo)
+    echo -e "  Model: $cpu_model"
+    echo -e "  Cores: $cpu_cores"
+fi
+
+echo
+
+# Memory Info
+echo -e "${BLUE}Memory Information:${NC}"
+if command -v free &> /dev/null; then
+    free -h | awk 'NR==2{printf "  Total: %s\n  Used: %s\n  Free: %s\n", $2, $3, $4}'
+fi
+
+echo
+
+# Disk Info
+echo -e "${BLUE}Disk Usage:${NC}"
+df -h / | awk 'NR==2{printf "  Total: %s\n  Used: %s (%s)\n  Free: %s\n", $2, $3, $5, $4}'
+
+echo
+
+# Network Info
+echo -e "${BLUE}Network Information:${NC}"
+if command -v ip &> /dev/null; then
+    echo -e "  Local IP: $(ip addr show | grep "inet " | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1 | head -1)"
+fi
+
+if command -v curl &> /dev/null; then
+    public_ip=$(curl -s --max-time 2 https://api.ipify.org 2>/dev/null)
+    if [ -n "$public_ip" ]; then
+        echo -e "  Public IP: $public_ip"
+    fi
+fi
+
+echo
+echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

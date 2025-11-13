@@ -1,0 +1,77 @@
+#!/bin/bash
+# Environment variables and exports - shared across different shells
+
+# Editor configuration
+export EDITOR='vim'
+export VISUAL='vim'
+export PAGER='less'
+
+# Language and locale
+export LANG='en_US.UTF-8'
+export LC_ALL='en_US.UTF-8'
+
+# History configuration
+export HISTSIZE=10000
+export HISTFILESIZE=20000
+export HISTCONTROL=ignoreboth:erasedups  # Ignore duplicates and commands starting with space
+export HISTIGNORE='ls:ll:la:cd:pwd:exit:clear:history'
+export HISTTIMEFORMAT='%F %T '
+
+# Less configuration
+export LESS='-F -g -i -M -R -S -w -X -z-4'
+export LESS_TERMCAP_mb=$'\E[1;31m'     # begin bold
+export LESS_TERMCAP_md=$'\E[1;36m'     # begin blink
+export LESS_TERMCAP_me=$'\E[0m'        # reset bold/blink
+export LESS_TERMCAP_so=$'\E[01;44;33m' # begin reverse video
+export LESS_TERMCAP_se=$'\E[0m'        # reset reverse video
+export LESS_TERMCAP_us=$'\E[1;32m'     # begin underline
+export LESS_TERMCAP_ue=$'\E[0m'        # reset underline
+
+# Colored man pages using less
+export MANPAGER='less -s -M +Gg'
+
+# PATH additions
+# Add local bin if it exists
+[ -d "$HOME/.local/bin" ] && export PATH="$HOME/.local/bin:$PATH"
+[ -d "$HOME/bin" ] && export PATH="$HOME/bin:$PATH"
+
+# Add dotfiles bin directory (now inside shared)
+[ -d "$HOME/.dotfiles/shared/bin" ] && export PATH="$HOME/.dotfiles/shared/bin:$PATH"
+
+# Development tools
+# Node.js
+export NPM_CONFIG_PREFIX="$HOME/.npm-global"
+[ -d "$NPM_CONFIG_PREFIX/bin" ] && export PATH="$NPM_CONFIG_PREFIX/bin:$PATH"
+
+# Go
+export GOPATH="$HOME/go"
+[ -d "$GOPATH/bin" ] && export PATH="$GOPATH/bin:$PATH"
+
+# Rust
+[ -d "$HOME/.cargo/bin" ] && export PATH="$HOME/.cargo/bin:$PATH"
+
+# Python
+export PYTHONDONTWRITEBYTECODE=1
+export PIPENV_VENV_IN_PROJECT=1
+
+# Docker
+export DOCKER_BUILDKIT=1
+export COMPOSE_DOCKER_CLI_BUILD=1
+
+# Grep colors
+export GREP_COLOR='1;33'
+
+# LS colors (GNU ls)
+if command -v dircolors &> /dev/null; then
+    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+fi
+
+# FZF (fuzzy finder) configuration
+export FZF_DEFAULT_OPTS='--height 40% --layout=reverse --border'
+export FZF_DEFAULT_COMMAND='find . -type f 2>/dev/null'
+
+# WSL specific exports
+if grep -qi microsoft /proc/version 2>/dev/null; then
+    export BROWSER='explorer.exe'
+    export WSL_DISTRO_NAME=$(grep -oP '(?<=^NAME=").*(?=")' /etc/os-release)
+fi

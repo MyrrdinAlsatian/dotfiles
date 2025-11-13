@@ -1,0 +1,193 @@
+#!/bin/bash
+# Custom shell functions - shared across different shells
+
+# Create a directory and cd into it
+mkcd() {
+    mkdir -p "$1" && cd "$1"
+}
+
+# Extract various archive formats
+extract() {
+    if [ -f "$1" ]; then
+        case "$1" in
+            *.tar.bz2)   tar xjf "$1"    ;;
+            *.tar.gz)    tar xzf "$1"    ;;
+            *.bz2)       bunzip2 "$1"    ;;
+            *.rar)       unrar x "$1"    ;;
+            *.gz)        gunzip "$1"     ;;
+            *.tar)       tar xf "$1"     ;;
+            *.tbz2)      tar xjf "$1"    ;;
+            *.tgz)       tar xzf "$1"    ;;
+            *.zip)       unzip "$1"      ;;
+            *.Z)         uncompress "$1" ;;
+            *.7z)        7z x "$1"       ;;
+            *.tar.xz)    tar xf "$1"     ;;
+            *)           echo "'$1' cannot be extracted via extract()" ;;
+        esac
+    else
+        echo "'$1' is not a valid file"
+    fi
+}
+
+# Create a backup of a file
+backup() {
+    if [ -f "$1" ]; then
+        cp "$1" "$1.backup-$(date +%Y%m%d-%H%M%S)"
+        echo "Backup created: $1.backup-$(date +%Y%m%d-%H%M%S)"
+    else
+        echo "File not found: $1"
+    fi
+}
+
+# Find file by name
+ff() {
+    find . -type f -iname "*$1*" 2>/dev/null
+}
+
+# Find directory by name
+fd() {
+    find . -type d -iname "*$1*" 2>/dev/null
+}
+
+# Search in file contents
+search() {
+    grep -r -i "$1" . 2>/dev/null
+}
+
+# Get file size in human readable format
+filesize() {
+    if [ -f "$1" ]; then
+        du -h "$1" | cut -f1
+    else
+        echo "File not found: $1"
+    fi
+}
+
+# Quick HTTP server in current directory
+serve() {
+    local port="${1:-8000}"
+    python3 -m http.server "$port"
+}
+
+# Weather report
+weather() {
+    local location="${1:-}"
+    curl -s "wttr.in/$location"
+}
+
+# Show all TODO/FIXME comments in current directory
+todos() {
+    grep -rn --color=always -E "TODO|FIXME|XXX|HACK|BUG" . 2>/dev/null | grep -v ".git"
+}
+
+# Git: Create a new branch and switch to it
+gnb() {
+    if [ -z "$1" ]; then
+        echo "Usage: gnb <branch-name>"
+        return 1
+    fi
+    git checkout -b "$1"
+}
+
+# Git: Show branches sorted by last commit
+gbr() {
+    git for-each-ref --sort=-committerdate refs/heads/ --format='%(HEAD) %(color:yellow)%(refname:short)%(color:reset) - %(color:red)%(objectname:short)%(color:reset) - %(contents:subject) - %(authorname) (%(color:green)%(committerdate:relative)%(color:reset))'
+}
+
+# Git: Interactive add
+gai() {
+    git add -i
+}
+
+# Docker: Stop and remove all containers
+dstop() {
+    docker stop $(docker ps -a -q) 2>/dev/null
+}
+
+# Docker: Remove all stopped containers
+drma() {
+    docker rm $(docker ps -a -q) 2>/dev/null
+}
+
+# Docker: Enter a running container
+denter() {
+    if [ -z "$1" ]; then
+        echo "Usage: denter <container-name-or-id>"
+        return 1
+    fi
+    docker exec -it "$1" /bin/bash || docker exec -it "$1" /bin/sh
+}
+
+# Show PATH entries one per line
+path() {
+    echo "$PATH" | tr ':' '\n'
+}
+
+# Check if a command exists
+cmd_exists() {
+    command -v "$1" &> /dev/null
+}
+
+# Get public IP address
+myip() {
+    curl -s https://api.ipify.org
+    echo
+}
+
+# Get local IP address
+localip() {
+    if cmd_exists ip; then
+        ip addr show | grep "inet " | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1
+    elif cmd_exists ifconfig; then
+        ifconfig | grep "inet " | grep -v 127.0.0.1 | awk '{print $2}'
+    fi
+}
+
+# Kill process by name
+killp() {
+    if [ -z "$1" ]; then
+        echo "Usage: killp <process-name>"
+        return 1
+    fi
+    ps aux | grep "$1" | grep -v grep | awk '{print $2}' | xargs kill -9 2>/dev/null
+    echo "Killed processes matching: $1"
+}
+
+# Create a random password
+genpasswd() {
+    local length="${1:-20}"
+    openssl rand -base64 48 | cut -c1-"$length"
+}
+
+# Port check
+portcheck() {
+    if [ -z "$1" ]; then
+        echo "Usage: portcheck <port>"
+        return 1
+    fi
+    lsof -i :"$1" || echo "Port $1 is not in use"
+}
+
+# JSON pretty print
+jsonpp() {
+    if [ -f "$1" ]; then
+        python3 -m json.tool "$1"
+    else
+        echo "$1" | python3 -m json.tool
+    fi
+}
+
+# Disk usage sorted
+dusort() {
+    du -ah "${1:-.}" 2>/dev/null | sort -hr | head -20
+}
+
+# Show colored diff
+cdiff() {
+    diff -u "$@" | colordiff | less -R
+}
+
+# Update all Git repositories in current directory
+gitup() {
+    find . -maxdepth 1 -type d -exec sh -c '(cd {} && git pull 2>/dev/null)' \;
+}

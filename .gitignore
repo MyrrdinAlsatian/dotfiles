@@ -1,0 +1,85 @@
+# SSH Keys and Secrets
+*.pem
+*.key
+*.pub
+id_rsa*
+id_dsa*
+id_ecdsa*
+id_ed25519*
+ssh/id_*
+ssh/*.pem
+ssh/*.key
+ssh/known_hosts
+ssh/authorized_keys
+
+# Local configurations (not to be shared)
+*.local
+*_local
+.env
+!.env.sh
+.env.*
+!.env.sh
+secrets/
+*.secret
+
+# Cache directories
+cache/
+.cache/
+*.cache
+
+# Backup files
+*.bak
+*.backup
+*.swp
+*.swo
+*~
+.*.swp
+.*.swo
+
+# OS-specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Logs
+*.log
+logs/
+
+# ZSH history (contains sensitive commands)
+zsh/.zsh_history
+.zsh_history
+
+# GPG keys
+*.gpg
+*.asc
+gnupg/
+
+# Password stores
+pass/
+*.password
+
+# Session files
+.session
+*.session
+sessions/
+
+# Git credential cache
+.git-credentials
+.git-credential-cache/

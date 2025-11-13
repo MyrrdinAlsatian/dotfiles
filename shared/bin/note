@@ -1,0 +1,33 @@
+#!/bin/bash
+# Quick note-taking script
+
+NOTES_DIR="${NOTES_DIR:-$HOME/notes}"
+EDITOR="${EDITOR:-vim}"
+TODAY=$(date +%Y-%m-%d)
+NOTE_FILE="$NOTES_DIR/$TODAY.md"
+
+# Create notes directory if it doesn't exist
+mkdir -p "$NOTES_DIR"
+
+# If no arguments, open today's note
+if [ $# -eq 0 ]; then
+    # Add timestamp if file exists and is not empty
+    if [ -s "$NOTE_FILE" ]; then
+        echo -e "\n## $(date +%H:%M:%S)\n" >> "$NOTE_FILE"
+    else
+        # Create new file with header
+        echo "# Notes - $TODAY" > "$NOTE_FILE"
+        echo -e "\n## $(date +%H:%M:%S)\n" >> "$NOTE_FILE"
+    fi
+    
+    $EDITOR "$NOTE_FILE"
+else
+    # Quick note - append to today's file
+    if [ ! -f "$NOTE_FILE" ]; then
+        echo "# Notes - $TODAY" > "$NOTE_FILE"
+    fi
+    
+    echo -e "\n## $(date +%H:%M:%S)" >> "$NOTE_FILE"
+    echo "$*" >> "$NOTE_FILE"
+    echo "Note added to $NOTE_FILE"
+fi
