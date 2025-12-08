@@ -231,3 +231,42 @@ git-pr-info() {
     echo "$OUTPUT"
   fi
 }
+# Security / SSH / GPG
+
+generate_ssh_key() {
+    local email=$1
+    local key_path=$2
+    ssh-keygen -t rsa -b 4096 -C "$email" -f "$key_path" -N ""
+    eval "$(ssh-agent -s)"
+    ssh-add "$key_path"
+    echo "SSH key generated and added to the SSH agent."
+}
+
+show_ssh_public_key() {
+    local key_path=$1
+    echo "Your SSH public key :"
+    cat "${key_path}.pub"
+}
+
+generate_gpg_key() {
+    local name=$1
+    local email=$2
+    gpg --batch --gen-key <<-EOF
+        Key-Type: RSA
+        Key-Length: 4096
+        Subkey-Type: RSA
+        Subkey-Length: 4096
+        Name-Real: $name
+        Name-Email: $email
+        Expire-Date: 0
+        %commit
+EOF
+    echo "GPG key generated."
+}
+
+show_gpg_public_key() {
+    local email=$1
+    local gpg_key_id=$(gpg --list-keys --with-colons | grep -B 1 "$email" | head -n 1 | cut -d ':' -f 5)
+    echo "Your public GPG key :"
+    gpg --armor --export "$gpg_key_id"
+}
