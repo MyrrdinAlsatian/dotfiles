@@ -9,6 +9,8 @@ setopt SHARE_HISTORY
 setopt HIST_IGNORE_DUPS
 setopt HIST_IGNORE_SPACE
 
+plugins=(git nvm symfony6)
+
 source $ZSH/oh-my-zsh.sh
 source <(docker completion zsh)
 source ~/.nvm/nvm.sh
