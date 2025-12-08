@@ -9,9 +9,9 @@ Host *
     ServerAliveCountMax 3
     
     # Connection sharing for performance
-    ControlMaster auto
-    ControlPath ~/.ssh/sockets/%r@%h-%p
-    ControlPersist 600
+    # ontrolMaster auto
+    # ControlPath ~/.ssh/sockets/%r@%h-%p
+    # ControlPersist 600
     
     # Security settings
     ForwardAgent no
