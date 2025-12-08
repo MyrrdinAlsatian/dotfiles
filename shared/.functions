@@ -90,7 +90,7 @@ gnb() {
 }
 
 # Git: Show branches sorted by last commit
-gbr() {
+gbsort() {
     git for-each-ref --sort=-committerdate refs/heads/ --format='%(HEAD) %(color:yellow)%(refname:short)%(color:reset) - %(color:red)%(objectname:short)%(color:reset) - %(contents:subject) - %(authorname) (%(color:green)%(committerdate:relative)%(color:reset))'
 }
 
@@ -119,7 +119,7 @@ denter() {
 }
 
 # Show PATH entries one per line
-path() {
+paths() {
     echo "$PATH" | tr ':' '\n'
 }
 
@@ -129,7 +129,7 @@ cmd_exists() {
 }
 
 # Get public IP address
-myip() {
+myip2() {
     curl -s https://api.ipify.org
     echo
 }
