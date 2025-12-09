@@ -9,7 +9,7 @@ setopt SHARE_HISTORY
 setopt HIST_IGNORE_DUPS
 setopt HIST_IGNORE_SPACE
 
-plugins=(git nvm symfony6)
+plugins=(git nvm symfony6 uv ansible aliases)
 
 source $ZSH/oh-my-zsh.sh
 source <(docker completion zsh)
