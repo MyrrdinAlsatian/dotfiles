@@ -96,6 +96,8 @@ alias gut='git'
 alias edit-aliases='${EDITOR:-vim} ~/.aliases'
 alias edit-functions='${EDITOR:-vim} ~/.functions'
 alias edit-exports='${EDITOR:-vim} ~/.exports'
+# Quick listing/search of all aliases and functions
+alias aliases='listdefs'
 
 # WSL specific
 if grep -qi microsoft /proc/version 2>/dev/null; then

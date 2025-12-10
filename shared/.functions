@@ -270,3 +270,50 @@ show_gpg_public_key() {
     echo "Your public GPG key :"
     gpg --armor --export "$gpg_key_id"
 }
+
+# List or search defined aliases and functions
+listdefs() {
+    local pattern="${1:-}"
+
+    local alias_file="${DOTFILES_SHARED_DIR:-$HOME/.dotfiles/shared}/.aliases"
+    local func_file="${DOTFILES_SHARED_DIR:-$HOME/.dotfiles/shared}/.functions"
+
+    echo "=== Aliases ==="
+    if [ -f "$alias_file" ]; then
+        if [ -n "$pattern" ]; then
+            # Show 'alias name=...' lines filtered by pattern
+            grep -E "^[[:space:]]*alias[[:space:]]+.*${pattern}.*" "$alias_file" || echo "No aliases match '$pattern'"
+        else
+            # Show all alias definitions
+            grep -E "^[[:space:]]*alias[[:space:]]+" "$alias_file" || echo "No aliases defined"
+        fi
+    else
+        echo "Alias file not found: $alias_file"
+    fi
+
+    echo
+    echo "=== Functions ==="
+    if [ -f "$func_file" ]; then
+        if [ -n "$pattern" ]; then
+            # List function names matching the pattern
+            awk -v pat="$pattern" '
+                /^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*[[:space:]]*\(\)[[:space:]]*\{/ {
+                    name = $1
+                    sub(/\(\){?$/, "", name)
+                    if (name ~ pat) print name
+                }
+            ' "$func_file" | sort -u || echo "No functions match '$pattern'"
+        else
+            # List all function names
+            awk '
+                /^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*[[:space:]]*\(\)[[:space:]]*\{/ {
+                    name = $1
+                    sub(/\(\){?$/, "", name)
+                    print name
+                }
+            ' "$func_file" | sort -u || echo "No functions defined"
+        fi
+    else
+        echo "Functions file not found: $func_file"
+    fi
+}
