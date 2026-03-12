@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# --------------------------------------------------
+# wt-remove — Remove a git worktree and delete its branch
+# --------------------------------------------------
+# Safety: refuses to delete an unmerged branch without --force.
+# --------------------------------------------------
+
+# shellcheck source=_wt-lib.sh
+source "$(dirname "$0")/_wt-lib.sh"
+
+usage() {
+  echo ""
+  echo "${BOLD}wt-remove${RESET} — Remove a git worktree and delete its branch"
+  echo ""
+  echo "${BOLD}Usage:${RESET}"
+  echo "  wt-remove <branch> [options]"
+  echo "  wt remove  <branch> [options]"
+  echo ""
+  echo "${BOLD}Options:${RESET}"
+  echo "  --force, -f    Force removal even if the branch is not merged"
+  echo "  --help, -h     Show this help"
+  echo ""
+  exit 1
+}
+
+# --------------------------------------------------
+# Argument parsing
+# --------------------------------------------------
+
+if [[ $# -lt 1 ]]; then
+  usage
+fi
+
+BRANCH_NAME="$1"
+shift
+
+FORCE=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --force|-f) FORCE=true ;;
+    --help|-h)  usage ;;
+    *) error "Unknown option: $1"; usage ;;
+  esac
+  shift
+done
+
+# --------------------------------------------------
+# Resolve paths
+# --------------------------------------------------
+
+REPO_ROOT="$(get_repo_root)"
+WORKTREE_PATH="$(get_worktree_path "$BRANCH_NAME" "$REPO_ROOT")"
+CURRENT_BRANCH="$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD)"
+
+echo ""
+echo "${BOLD}=== Remove Worktree ===${RESET}"
+info "Branch:   $BRANCH_NAME"
+info "Worktree: $WORKTREE_PATH"
+echo ""
+
+# --------------------------------------------------
+# Safety: do not remove the currently checked-out branch
+# --------------------------------------------------
+
+if [[ "$CURRENT_BRANCH" == "$BRANCH_NAME" ]]; then
+  error "Cannot remove the currently checked-out branch '$BRANCH_NAME'."
+  exit 1
+fi
+
+cd "$REPO_ROOT"
+
+# --------------------------------------------------
+# Remove the worktree directory
+# --------------------------------------------------
+
+if git worktree list --porcelain | grep -q "^worktree $WORKTREE_PATH$"; then
+  step "Removing worktree at $WORKTREE_PATH..."
+  if $FORCE; then
+    git worktree remove --force "$WORKTREE_PATH"
+  else
+    git worktree remove "$WORKTREE_PATH"
+  fi
+  success "Worktree removed"
+elif [[ -d "$WORKTREE_PATH" ]]; then
+  warn "Directory exists but is not a registered worktree: $WORKTREE_PATH"
+  warn "Remove it manually if needed."
+else
+  warn "No worktree found at $WORKTREE_PATH — skipping worktree removal"
+fi
+
+echo ""
+
+# --------------------------------------------------
+# Delete the local branch
+# --------------------------------------------------
+
+if branch_exists_locally "$BRANCH_NAME"; then
+  step "Deleting local branch '$BRANCH_NAME'..."
+  if $FORCE; then
+    git branch -D "$BRANCH_NAME"
+  else
+    # -d refuses to delete an unmerged branch
+    if ! git branch -d "$BRANCH_NAME" 2>/dev/null; then
+      error "Branch '$BRANCH_NAME' is not fully merged."
+      error "Use --force to delete it anyway."
+      exit 1
+    fi
+  fi
+  success "Branch deleted"
+else
+  info "Local branch '$BRANCH_NAME' not found — nothing to delete"
+fi
+
+echo ""
+
+# --------------------------------------------------
+# Prune stale worktree refs
+# --------------------------------------------------
+
+git worktree prune
+
+echo "${BOLD}=== Done ===${RESET}"
+echo ""

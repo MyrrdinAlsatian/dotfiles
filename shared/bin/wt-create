@@ -1,0 +1,252 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# --------------------------------------------------
+# wt-create — Create a git worktree
+# --------------------------------------------------
+# Automatic branch resolution order:
+#   1. Branch exists locally → checkout
+#   2. Branch exists on origin → checkout -b tracking origin/<branch>
+#   3. Branch does not exist → create new from HEAD
+# --------------------------------------------------
+
+# shellcheck source=_wt-lib.sh
+source "$(dirname "$0")/_wt-lib.sh"
+
+usage() {
+  echo ""
+  echo "${BOLD}wt-create${RESET} — Create a git worktree"
+  echo ""
+  echo "${BOLD}Usage:${RESET}"
+  echo "  wt-create <branch> [options]"
+  echo "  wt create  <branch> [options]"
+  echo ""
+  echo "${BOLD}Options:${RESET}"
+  echo "  --no-install   Skip dependency installation"
+  echo "  --cd           Print worktree path to stdout (use with: cd \"\$(wt-create branch --cd)\")"
+  echo "  --help, -h     Show this help"
+  echo ""
+  echo "${BOLD}Branch resolution:${RESET}"
+  echo "  Exists locally         → checkout"
+  echo "  Exists on origin only  → checkout tracking remote branch"
+  echo "  Does not exist         → create new branch from HEAD"
+  echo ""
+  echo "${BOLD}Dependency detection:${RESET}"
+  echo "  pnpm-lock.yaml → pnpm install"
+  echo "  yarn.lock      → yarn install"
+  echo "  package-lock.json → npm install"
+  echo "  composer.json  → composer install"
+  echo "  go.mod         → go mod download"
+  echo ""
+  echo "${BOLD}Environment:${RESET}"
+  echo "  .env.example files are automatically copied to .env"
+  echo ""
+  echo "${BOLD}Hooks:${RESET}"
+  echo "  .worktree-setup.sh is executed if present"
+  echo ""
+  exit 1
+}
+
+# --------------------------------------------------
+# Argument parsing
+# --------------------------------------------------
+
+if [[ $# -lt 1 ]]; then
+  usage
+fi
+
+BRANCH_NAME="$1"
+shift
+
+INSTALL_DEPS=true
+CD_MODE=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --no-install) INSTALL_DEPS=false ;;
+    --cd)         CD_MODE=true ;;
+    --help|-h)    usage ;;
+    *) error "Unknown option: $1"; usage ;;
+  esac
+  shift
+done
+
+# When --cd is set, redirect all info output to stderr so only the path
+# goes to stdout (usable with: cd "$(wt-create feature-auth --cd)")
+if $CD_MODE; then
+  exec 3>&1   # save original stdout
+  exec 1>&2   # redirect stdout to stderr
+fi
+
+# --------------------------------------------------
+# Repo resolution
+# --------------------------------------------------
+
+REPO_ROOT="$(get_repo_root)"
+WORKTREE_PATH="$(get_worktree_path "$BRANCH_NAME" "$REPO_ROOT")"
+
+echo ""
+echo "${BOLD}=== Git Worktree Setup ===${RESET}"
+info "Branch:   $BRANCH_NAME"
+info "Worktree: $WORKTREE_PATH"
+echo ""
+
+# --------------------------------------------------
+# Safety checks
+# --------------------------------------------------
+
+if [[ -d "$WORKTREE_PATH" ]]; then
+  error "Directory already exists: $WORKTREE_PATH"
+  exit 1
+fi
+
+cd "$REPO_ROOT"
+
+# Ensure .worktrees/ is not tracked by git
+ensure_worktrees_excluded "$REPO_ROOT"
+
+# --------------------------------------------------
+# Branch resolution + worktree creation
+# --------------------------------------------------
+
+step "Resolving branch '$BRANCH_NAME'..."
+
+if branch_exists_locally "$BRANCH_NAME"; then
+  info "Branch exists locally → checking out"
+  git worktree add "$WORKTREE_PATH" "$BRANCH_NAME"
+
+elif branch_exists_on_origin "$BRANCH_NAME"; then
+  info "Branch found on origin → fetching and tracking"
+  git fetch origin "$BRANCH_NAME"
+  git worktree add --track -b "$BRANCH_NAME" "$WORKTREE_PATH" "origin/$BRANCH_NAME"
+
+else
+  info "Branch does not exist → creating from HEAD"
+  git worktree add -b "$BRANCH_NAME" "$WORKTREE_PATH"
+fi
+
+success "Worktree created at $WORKTREE_PATH"
+echo ""
+
+cd "$WORKTREE_PATH"
+
+# --------------------------------------------------
+# Node version manager (.nvmrc / .node-version)
+# --------------------------------------------------
+
+if $INSTALL_DEPS; then
+  if [[ -f ".nvmrc" || -f ".node-version" ]]; then
+    step "Detected .nvmrc / .node-version — loading Node version..."
+    if command -v nvm &>/dev/null; then
+      # nvm is a shell function; source it if available
+      # shellcheck disable=SC1090
+      NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+      # shellcheck disable=SC1091
+      [[ -s "$NVM_DIR/nvm.sh" ]] && source "$NVM_DIR/nvm.sh"
+      nvm install 2>/dev/null && nvm use
+      success "Node version set"
+    else
+      warn "nvm not found — skipping Node version switch"
+    fi
+    echo ""
+  fi
+
+  # ------------------------------------------------------------------
+  # corepack (pnpm / yarn managed via corepack)
+  # ------------------------------------------------------------------
+
+  if [[ -f "package.json" ]] && command -v corepack &>/dev/null; then
+    PACKAGE_MANAGER=$(node -e "try{const p=require('./package.json');const m=(p.packageManager||'').split('@')[0];if(m==='pnpm'||m==='yarn')console.log(m)}catch(e){}" 2>/dev/null || true)
+    if [[ -n "$PACKAGE_MANAGER" ]]; then
+      step "Enabling corepack for $PACKAGE_MANAGER..."
+      corepack enable
+      success "corepack enabled"
+      echo ""
+    fi
+  fi
+fi
+
+# --------------------------------------------------
+# Install dependencies (auto-detect)
+# --------------------------------------------------
+
+if $INSTALL_DEPS; then
+  step "Installing dependencies..."
+
+  if [[ -f "pnpm-lock.yaml" ]]; then
+    pnpm install
+  elif [[ -f "yarn.lock" ]]; then
+    yarn install
+  elif [[ -f "package-lock.json" ]]; then
+    npm install
+  elif [[ -f "composer.json" ]]; then
+    composer install
+  elif [[ -f "go.mod" ]]; then
+    go mod download
+  else
+    warn "No known dependency manager detected — skipping install"
+  fi
+
+  success "Dependencies installed"
+  echo ""
+fi
+
+# --------------------------------------------------
+# Auto copy .env.example files
+# --------------------------------------------------
+
+step "Setting up environment files..."
+
+ENV_COPIED=false
+while IFS= read -r -d '' file; do
+  target="${file%.example}"
+  if [[ ! -f "$target" ]]; then
+    cp "$file" "$target"
+    info "Created $target"
+    ENV_COPIED=true
+  fi
+done < <(find . -type f -name ".env.example" -print0 2>/dev/null)
+
+$ENV_COPIED || info "No .env.example files found"
+echo ""
+
+# --------------------------------------------------
+# Docker Compose
+# --------------------------------------------------
+
+if [[ -f "docker-compose.yml" || -f "docker-compose.yaml" || -f "compose.yml" || -f "compose.yaml" ]]; then
+  if command -v docker &>/dev/null; then
+    step "Starting Docker Compose services..."
+    docker compose up -d
+    success "Docker Compose services started"
+    echo ""
+  else
+    warn "docker-compose file found but docker is not installed — skipping"
+    echo ""
+  fi
+fi
+
+# --------------------------------------------------
+# Optional project hook
+# --------------------------------------------------
+
+if [[ -f ".worktree-setup.sh" ]]; then
+  step "Running project hook (.worktree-setup.sh)..."
+  bash .worktree-setup.sh
+  echo ""
+fi
+
+# --------------------------------------------------
+# Done
+# --------------------------------------------------
+
+echo "${BOLD}=== Setup Complete ===${RESET}"
+success "Worktree ready at: $WORKTREE_PATH"
+echo ""
+echo "  cd $WORKTREE_PATH"
+echo ""
+
+# When --cd was requested, print the path to the saved stdout (fd 3)
+if $CD_MODE; then
+  echo "$WORKTREE_PATH" >&3
+fi
