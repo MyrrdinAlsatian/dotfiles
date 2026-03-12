@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# --------------------------------------------------
+# wt-clean — Prune broken worktrees and dead remote refs
+# --------------------------------------------------
+
+# shellcheck source=_wt-lib.sh
+source "$(dirname "$0")/_wt-lib.sh"
+
+usage() {
+  echo ""
+  echo "${BOLD}wt-clean${RESET} — Prune broken worktrees and dead remote refs"
+  echo ""
+  echo "${BOLD}Usage:${RESET}"
+  echo "  wt-clean"
+  echo "  wt clean"
+  echo ""
+  echo "Runs:"
+  echo "  git worktree prune   — Remove stale worktree metadata"
+  echo "  git fetch --prune    — Remove dead remote-tracking refs"
+  echo ""
+  exit 1
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --help|-h) usage ;;
+    *) error "Unknown option: $1"; usage ;;
+  esac
+done
+
+REPO_ROOT="$(get_repo_root)"
+cd "$REPO_ROOT"
+
+echo ""
+echo "${BOLD}=== Worktree Cleanup ===${RESET}"
+echo ""
+
+step "Pruning stale worktree metadata..."
+git worktree prune
+success "Worktree metadata pruned"
+echo ""
+
+step "Fetching and pruning dead remote-tracking refs..."
+git fetch --prune
+success "Remote refs pruned"
+echo ""
+
+echo "${BOLD}=== Done ===${RESET}"
+echo ""
