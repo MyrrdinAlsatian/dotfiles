@@ -55,7 +55,7 @@ unlink:
 # Update dotfiles from repository
 update:
 	@echo "Updating dotfiles from repository..."
-	@git pull origin main
+	@git pull origin production
 	@echo "Re-installing dotfiles..."
 	@$(MAKE) unlink
 	@$(MAKE) link
