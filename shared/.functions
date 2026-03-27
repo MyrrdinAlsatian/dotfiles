@@ -134,12 +134,167 @@ myip2() {
     echo
 }
 
-# Get local IP address
+# Get local IP address with extended options
 localip() {
+    local verbose=false
+    local ipv6=false
+    local all_versions=false
+    local show_mac=false
+    local show_gateway=false
+    local filter_interface=""
+
+    # Parse arguments
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -v|--verbose)
+                verbose=true
+                ;;
+            -6|--ipv6)
+                ipv6=true
+                ;;
+            -a|--all)
+                all_versions=true
+                ipv6=true
+                ;;
+            --mac)
+                show_mac=true
+                verbose=true
+                ;;
+            --gateway)
+                show_gateway=true
+                verbose=true
+                ;;
+            -i|--interface)
+                filter_interface="$2"
+                shift
+                ;;
+            -h|--help)
+                cat <<EOF
+Usage: localip [options]
+
+Options:
+  -v, --verbose       Show interface names and netmask
+  -6, --ipv6          Show IPv6 addresses only
+  -a, --all           Show both IPv4 and IPv6
+  --mac               Show MAC addresses (implies -v)
+  --gateway           Show gateway (implies -v)
+  -i, --interface     Filter by specific interface
+  -h, --help          Show this help message
+
+Examples:
+  localip              # Show IPv4 addresses
+  localip -v           # Show IPv4 with interface names
+  localip -a           # Show both IPv4 and IPv6
+  localip --mac        # Show IPs and MAC addresses
+  localip -i eth0      # Show address of eth0 only
+EOF
+                return 0
+                ;;
+            *)
+                echo "Unknown option: $1"
+                return 1
+                ;;
+        esac
+        shift
+    done
+
     if cmd_exists ip; then
-        ip addr show | grep "inet " | grep -v 127.0.0.1 | awk '{print $2}' | cut -d/ -f1
+        # IPv4
+        if [ "$ipv6" = false ] || [ "$all_versions" = true ]; then
+            if [ "$verbose" = true ] || [ "$all_versions" = true ]; then
+                echo "=== IPv4 Addresses ==="
+            fi
+            
+            if [ -n "$filter_interface" ]; then
+                local filter_cmd="grep $filter_interface"
+            else
+                local filter_cmd="cat"
+            fi
+
+            ip -o -4 addr show scope global | $filter_cmd | while read -r line; do
+                local iface=$(echo "$line" | awk '{print $2}')
+                local ip_addr=$(echo "$line" | awk '{print $4}' | cut -d/ -f1)
+                local netmask=$(echo "$line" | awk '{print $4}' | cut -d/ -f2)
+                local state=$(ip link show "$iface" | grep -o "UP\|DOWN" | head -1)
+                
+                if [ "$verbose" = true ]; then
+                    echo "Interface: $iface | State: $state | IP: $ip_addr/$netmask"
+                    
+                    if [ "$show_mac" = true ]; then
+                        local mac=$(ip link show "$iface" | awk '/link\/ether/ {print $2}')
+                        echo "  MAC: $mac"
+                    fi
+                    
+                    if [ "$show_gateway" = true ]; then
+                        local gateway=$(ip route show | grep "default via" | grep "$iface" | awk '{print $3}')
+                        if [ -n "$gateway" ]; then
+                            echo "  Gateway: $gateway"
+                        fi
+                    fi
+                else
+                    echo "$ip_addr"
+                fi
+            done
+        fi
+
+        # IPv6
+        if [ "$ipv6" = true ]; then
+            if [ "$verbose" = true ] || [ "$all_versions" = true ]; then
+                echo "=== IPv6 Addresses ==="
+            fi
+            
+            if [ -n "$filter_interface" ]; then
+                local filter_cmd="grep $filter_interface"
+            else
+                local filter_cmd="cat"
+            fi
+
+            ip -o -6 addr show scope global | $filter_cmd | while read -r line; do
+                local iface=$(echo "$line" | awk '{print $2}')
+                local ip_addr=$(echo "$line" | awk '{print $4}' | cut -d/ -f1)
+                local netmask=$(echo "$line" | awk '{print $4}' | cut -d/ -f2)
+                
+                if [ "$verbose" = true ]; then
+                    echo "Interface: $iface | IPv6: $ip_addr/$netmask"
+                else
+                    echo "$ip_addr"
+                fi
+            done
+        fi
     elif cmd_exists ifconfig; then
-        ifconfig | grep "inet " | grep -v 127.0.0.1 | awk '{print $2}'
+        if [ "$ipv6" = false ] || [ "$all_versions" = true ]; then
+            if [ "$verbose" = true ] || [ "$all_versions" = true ]; then
+                echo "=== IPv4 Addresses ==="
+            fi
+            
+            ifconfig | awk -v filter="$filter_interface" -v verbose="$verbose" -v show_mac="$show_mac" '
+                /^[^[:space:]]/ { 
+                    iface=$1; 
+                    sub(":", "", iface);
+                    if (filter == "" || iface == filter) {
+                        current_iface=iface;
+                        in_target=1;
+                    } else {
+                        in_target=0;
+                    }
+                }
+                in_target && /inet / && $2 != "127.0.0.1" { 
+                    ip=$2;
+                    if (verbose == "true") {
+                        print "Interface: " current_iface " | IP: " ip;
+                    } else {
+                        print ip;
+                    }
+                }
+                in_target && show_mac == "true" && /HWaddr|ether/ {
+                    mac=$NF;
+                    print "  MAC: " mac;
+                }
+            '
+        fi
+    else
+        echo "❌ Neither 'ip' nor 'ifconfig' is available"
+        return 1
     fi
 }
 
@@ -347,6 +502,92 @@ listdefs() {
     else
         echo "Functions file not found: $func_file"
     fi
+}
+
+# System Monitoring
+
+# Check memory usage
+memcheck() {
+    if cmd_exists free; then
+        echo "=== Memory Usage ==="
+        free -h
+    else
+        echo "Memory info not available"
+    fi
+}
+
+# Count CPU cores
+cpucount() {
+    if cmd_exists nproc; then
+        echo "CPU cores: $(nproc)"
+    elif [ -f /proc/cpuinfo ]; then
+        echo "CPU cores: $(grep -c "^processor" /proc/cpuinfo)"
+    else
+        echo "Could not determine CPU count"
+    fi
+}
+
+# Find and show process details
+whichproc() {
+    if [ -z "$1" ]; then
+        echo "Usage: whichproc <process-name>"
+        return 1
+    fi
+    ps aux | grep "$1" | grep -v grep
+}
+
+# Network Functions
+
+# Test internet connection
+testconn() {
+    echo "Testing internet connection..."
+    if ping -c 1 8.8.8.8 &> /dev/null; then
+        echo "✅ Internet connection: OK"
+        return 0
+    else
+        echo "❌ Internet connection: FAILED"
+        return 1
+    fi
+}
+
+# Check DNS resolution
+dns-check() {
+    local host="${1:-google.com}"
+    echo "Checking DNS for $host..."
+    if cmd_exists nslookup; then
+        nslookup "$host"
+    elif cmd_exists dig; then
+        dig "$host"
+    else
+        echo "Neither nslookup nor dig available"
+        return 1
+    fi
+}
+
+# Git Maintenance
+
+# Clean up deleted branches from remote
+gitclean() {
+    echo "Cleaning up remote tracking branches..."
+    git fetch --prune
+    echo "✅ Cleaned remote branches"
+    
+    echo "Removing merged branches..."
+    git branch --merged | grep -v "\*" | grep -v "main" | grep -v "master" | grep -v "develop" | xargs -r git branch -d
+    echo "✅ Removed merged local branches"
+}
+
+# Find a branch by pattern
+git-find-branch() {
+    if [ -z "$1" ]; then
+        echo "Usage: git-find-branch <pattern>"
+        return 1
+    fi
+    echo "Local branches matching '$1':"
+    git branch | grep "$1"
+    echo ""
+    echo "Remote branches matching '$1':"
+    git branch -r | grep "$1"
 }
 
 # Make php version switch
