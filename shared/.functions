@@ -194,26 +194,58 @@ gitup() {
 
 # Git pull request info
 git-pr-info() {
-  BASE_BRANCH=$(git branch -r \
-    | grep -E 'origin/(main|develop|master)' \
-    | grep -v 'HEAD ->' \
-    | head -n 1 \
-    | sed 's/origin\///' \
-    | tr -d '[:space:]')
-  
-  OUTPUT=$(git log origin/$BASE_BRANCH..HEAD --oneline --name-only --pretty=format:"---%n%h %s%n%b%n Fichiers : %n")
+  # Si aucun argument n'est fourni, on utilise le comportement par défaut
+  if [ $# -eq 0 ] || [[ "$1" == "--copy" ]]; then
+    # Détection automatique de la branche de base (main, develop, master)
+    BASE_BRANCH=$(git branch -r \
+      | grep -E 'origin/(main|develop|master)' \
+      | grep -v 'HEAD ->' \
+      | head -n 1 \
+      | sed 's/origin\///' \
+      | tr -d '[:space:]')
 
- if [ -z "$OUTPUT" ]; then
-    echo "✅ Aucun nouveau commit par rapport à origin/$BASE_BRANCH"
+    COMPARE_BRANCH="HEAD" # On compare avec la branche courante
+    COPY_MODE=false
+
+    # Si le premier argument est --copy, on active le mode copie
+    if [[ "$1" == "--copy" ]]; then
+      COPY_MODE=true
+    fi
+  else
+    # Sinon, on utilise les branches spécifiées par l'utilisateur
+    BASE_BRANCH="$1"
+    COMPARE_BRANCH="$2"
+
+    # Vérification que les branches existent
+    if ! git show-ref --verify --quiet refs/heads/"$BASE_BRANCH" && ! git show-ref --verify --quiet refs/remotes/origin/"$BASE_BRANCH"; then
+      echo "❌ La branche de base '$BASE_BRANCH' n'existe pas localement ou sur origin."
+      return 1
+    fi
+
+    if ! git show-ref --verify --quiet refs/heads/"$COMPARE_BRANCH" && ! git show-ref --verify --quiet refs/remotes/origin/"$COMPARE_BRANCH"; then
+      echo "❌ La branche à comparer '$COMPARE_BRANCH' n'existe pas localement ou sur origin."
+      return 1
+    fi
+
+    # Si le troisième argument est --copy, on active le mode copie
+    if [[ "$3" == "--copy" ]]; then
+      COPY_MODE=true
+    fi
+  fi
+
+  # Récupération des commits entre les deux branches
+  OUTPUT=$(git log "$BASE_BRANCH".."$COMPARE_BRANCH" --oneline --name-only --pretty=format:"---%n%h %s%n%b%n Fichiers : %n")
+
+  if [ -z "$OUTPUT" ]; then
+    echo "✅ Aucun nouveau commit entre '$BASE_BRANCH' et '$COMPARE_BRANCH'"
     return
   fi
 
-  echo "📘 Base détectée : $BASE_BRANCH"
+  echo "📘 Comparaison entre '$BASE_BRANCH' et '$COMPARE_BRANCH'"
   echo ""
 
-    # Gestion de l’option --copy
-  if [[ "$1" == "--copy" ]]; then
-    # Copie dans le presse-papiers selon l’OS
+  # Gestion de l’option --copy
+  if [ "$COPY_MODE" = true ]; then
     if command -v pbcopy >/dev/null 2>&1; then
       echo "$OUTPUT" | pbcopy
       echo "📋 Commits copiés dans le presse-papiers (macOS)"
@@ -227,7 +259,6 @@ git-pr-info() {
       echo "⚠️ Impossible de copier : aucun utilitaire de presse-papiers trouvé"
     fi
   else
-    # Sinon, on affiche simplement dans le terminal
     echo "$OUTPUT"
   fi
 }
@@ -316,4 +347,10 @@ listdefs() {
     else
         echo "Functions file not found: $func_file"
     fi
+}
+
+# Make php version switch
+phpuse() {
+  sudo update-alternatives --set php /usr/bin/php$1
+  php -v
 }
