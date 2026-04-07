@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# --------------------------------------------------
+# wt-info — Show detailed information about a worktree
+# --------------------------------------------------
+
+# shellcheck source=_wt-lib.sh
+source "$(dirname "$0")/_wt-lib.sh"
+
+usage() {
+  echo ""
+  echo "${BOLD}wt-info${RESET} — Show detailed information about a worktree"
+  echo ""
+  echo "${BOLD}Usage:${RESET}"
+  echo "  wt-info <branch>"
+  echo "  wt info  <branch>"
+  echo ""
+  echo "${BOLD}Description:${RESET}"
+  echo "  Display detailed information about a specific worktree including"
+  echo "  branch name, path, current commit, and working tree changes."
+  echo ""
+  echo "${BOLD}Options:${RESET}"
+  echo "  --help, -h     Show this help"
+  echo ""
+  exit 1
+}
+
+BRANCH="${1:-}"
+
+case "$BRANCH" in
+  --help|-h|help|"")
+    usage
+    ;;
+esac
+
+REPO_ROOT=$(get_repo_root)
+WORKTREE_PATH=$(get_worktree_path "$BRANCH" "$REPO_ROOT")
+
+if [[ ! -d "$WORKTREE_PATH" ]]; then
+  error "Worktree for branch '$BRANCH' not found"
+  exit 1
+fi
+
+cd "$WORKTREE_PATH"
+
+echo ""
+echo "${BOLD}=== Worktree Information ===${RESET}"
+echo ""
+info "Branch:        $BRANCH"
+info "Path:          $WORKTREE_PATH"
+echo ""
+
+# Current HEAD
+current_head=$(git rev-parse HEAD)
+current_head_short=$(git rev-parse --short HEAD)
+step "Current commit: $current_head_short"
+git log -1 --pretty=format:"  %s" || echo "  (no commits)"
+echo ""
+
+# Default branch comparison
+default_branch=$(get_default_branch)
+echo "${BOLD}Comparison with $default_branch:${RESET}"
+
+if git rev-parse --verify "$default_branch" >/dev/null 2>&1; then
+  ahead=$(git rev-list --count "$default_branch"..HEAD 2>/dev/null || echo 0)
+  behind=$(git rev-list --count HEAD.."$default_branch" 2>/dev/null || echo 0)
+  
+  echo "  Commits ahead:  $ahead"
+  echo "  Commits behind: $behind"
+else
+  warn "Default branch '$default_branch' not found"
+fi
+
+echo ""
+
+# Working tree changes
+echo "${BOLD}Working Tree:${RESET}"
+git_status=$(git status --porcelain)
+
+if [[ -z "$git_status" ]]; then
+  success "Working tree is clean"
+else
+  echo "$git_status" | while read -r line; do
+    status="${line:0:2}"
+    file="${line:3}"
+    
+    case "$status" in
+      M*)  echo "  ${YELLOW}modified:${RESET}  $file" ;;
+      A*)  echo "  ${GREEN}added:${RESET}     $file" ;;
+      D*)  echo "  ${RED}deleted:${RESET}    $file" ;;
+      R*)  echo "  ${BLUE}renamed:${RESET}    $file" ;;
+      \??) echo "  ${RED}untracked:${RESET}  $file" ;;
+      *)   echo "  $line" ;;
+    esac
+  done
+fi
+
+echo ""
+
+# Recent commits
+echo "${BOLD}Recent Commits:${RESET}"
+git log --oneline -5 2>/dev/null | sed 's/^/  /'
+
+echo ""

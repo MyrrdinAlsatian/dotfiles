@@ -1,0 +1,119 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# --------------------------------------------------
+# wt-status — Show status of all git worktrees
+# --------------------------------------------------
+
+# shellcheck source=_wt-lib.sh
+source "$(dirname "$0")/_wt-lib.sh"
+
+usage() {
+  echo ""
+  echo "${BOLD}wt-status${RESET} — Show status of all git worktrees"
+  echo ""
+  echo "${BOLD}Usage:${RESET}"
+  echo "  wt-status [<branch>]"
+  echo "  wt status  [<branch>]"
+  echo ""
+  echo "${BOLD}Description:${RESET}"
+  echo "  Show the status of all worktrees or a specific one."
+  echo "  Displays commits ahead/behind and working tree changes."
+  echo ""
+  echo "${BOLD}Options:${RESET}"
+  echo "  --help, -h     Show this help"
+  echo ""
+  exit 1
+}
+
+BRANCH="${1:-}"
+
+case "$BRANCH" in
+  --help|-h|help)
+    usage
+    ;;
+esac
+
+REPO_ROOT=$(get_repo_root)
+cd "$REPO_ROOT"
+
+# Function to get status for a single worktree
+show_worktree_status() {
+  local worktree_path="$1"
+  local branch_name="$2"
+  
+  cd "$worktree_path" || return
+  
+  # Get commits ahead/behind
+  local default_branch
+  default_branch=$(get_default_branch)
+  
+  local ahead=0
+  local behind=0
+  if git rev-parse --verify "$default_branch" >/dev/null 2>&1; then
+    ahead=$(git rev-list --count "$default_branch"..HEAD 2>/dev/null || echo 0)
+    behind=$(git rev-list --count HEAD.."$default_branch" 2>/dev/null || echo 0)
+  fi
+  
+  # Get working tree status
+  local status
+  status=$(git status --porcelain 2>/dev/null | wc -l)
+  
+  # Get current HEAD (short hash)
+  local current_head
+  current_head=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+  
+  # Format output
+  local status_str=""
+  if [[ $ahead -gt 0 ]]; then
+    status_str="${status_str}${GREEN}↑ $ahead${RESET} "
+  fi
+  if [[ $behind -gt 0 ]]; then
+    status_str="${status_str}${YELLOW}↓ $behind${RESET} "
+  fi
+  if [[ $status -gt 0 ]]; then
+    status_str="${status_str}${RED}⚠ $status changes${RESET} "
+  else
+    status_str="${status_str}${GREEN}✓ clean${RESET}"
+  fi
+  
+  printf "  ${BOLD}%-20s${RESET}  %-8s  %s\n" "$branch_name" "$current_head" "$status_str"
+}
+
+echo ""
+echo "${BOLD}=== Worktree Status ===${RESET}"
+echo ""
+
+if [[ -n "$BRANCH" ]]; then
+  # Show specific branch
+  WORKTREE_PATH=$(get_worktree_path "$BRANCH" "$REPO_ROOT")
+  if [[ ! -d "$WORKTREE_PATH" ]]; then
+    error "Worktree for branch '$BRANCH' not found"
+    exit 1
+  fi
+  show_worktree_status "$WORKTREE_PATH" "$BRANCH"
+else
+  # Show all worktrees
+  if [[ ! -d "$REPO_ROOT/.worktrees" ]]; then
+    info "No worktrees found"
+    exit 0
+  fi
+  
+  git worktree list --porcelain | awk '
+    /^worktree / { path=$2 }
+    /^branch /   { branch=substr($2, index($2,"refs/heads/")+11) }
+    /^$/         {
+      if (path != "") {
+        print path " " branch
+        path=""; branch=""
+      }
+    }
+    END {
+      if (path != "") print path " " branch
+    }
+  ' | while read -r path branch; do
+    show_worktree_status "$path" "$branch"
+  done
+fi
+
+echo ""

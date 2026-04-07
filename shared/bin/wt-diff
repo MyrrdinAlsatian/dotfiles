@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# --------------------------------------------------
+# wt-diff — Show differences between worktrees/branches
+# --------------------------------------------------
+
+# shellcheck source=_wt-lib.sh
+source "$(dirname "$0")/_wt-lib.sh"
+
+usage() {
+  echo ""
+  echo "${BOLD}wt-diff${RESET} — Show differences between worktrees or branches"
+  echo ""
+  echo "${BOLD}Usage:${RESET}"
+  echo "  wt-diff <branch1> [<branch2>]"
+  echo "  wt diff  <branch1> [<branch2>]"
+  echo ""
+  echo "${BOLD}Description:${RESET}"
+  echo "  Compare one or two worktrees/branches."
+  echo "  If only one branch is given, compares against the default branch (main/master)."
+  echo ""
+  echo "${BOLD}Options:${RESET}"
+  echo "  --stat         Show statistics only"
+  echo "  --help, -h     Show this help"
+  echo ""
+  echo "${BOLD}Examples:${RESET}"
+  echo "  wt diff feature                   # Compare feature vs main"
+  echo "  wt diff feature bugfix            # Compare feature vs bugfix"
+  echo "  wt diff feature --stat            # Statistics only"
+  echo ""
+  exit 1
+}
+
+# Argument parsing
+BRANCH1="${1:-}"
+BRANCH2="${2:-}"
+STAT_ONLY=false
+
+# Handle flags
+if [[ "$BRANCH1" == "--help" ]] || [[ "$BRANCH1" == "-h" ]]; then
+  usage
+elif [[ -z "$BRANCH1" ]]; then
+  usage
+fi
+
+# Check for --stat in remaining args
+for arg in "$@"; do
+  if [[ "$arg" == "--stat" ]]; then
+    STAT_ONLY=true
+  fi
+done
+
+REPO_ROOT=$(get_repo_root)
+cd "$REPO_ROOT"
+
+# If BRANCH2 is empty or is a flag, use default branch as BRANCH2
+if [[ -z "$BRANCH2" ]] || [[ "$BRANCH2" == "--stat" ]] || [[ "$BRANCH2" == "--help" ]]; then
+  BRANCH2=$(get_default_branch)
+fi
+
+echo ""
+echo "${BOLD}=== Comparing Branches ===${RESET}"
+echo ""
+info "Branch 1: $BRANCH1"
+info "Branch 2: $BRANCH2"
+echo ""
+
+# Verify branches exist
+if ! branch_exists_locally "$BRANCH1" && ! branch_exists_on_origin "$BRANCH1"; then
+  error "Branch '$BRANCH1' not found"
+  exit 1
+fi
+
+if ! branch_exists_locally "$BRANCH2" && ! branch_exists_on_origin "$BRANCH2"; then
+  error "Branch '$BRANCH2' not found"
+  exit 1
+fi
+
+# Use tracking refs if branches exist on origin
+local_ref1="$BRANCH1"
+local_ref2="$BRANCH2"
+
+if ! branch_exists_locally "$BRANCH1" && branch_exists_on_origin "$BRANCH1"; then
+  local_ref1="origin/$BRANCH1"
+fi
+
+if ! branch_exists_locally "$BRANCH2" && branch_exists_on_origin "$BRANCH2"; then
+  local_ref2="origin/$BRANCH2"
+fi
+
+echo "${BOLD}Diff Summary:${RESET}"
+echo ""
+
+if $STAT_ONLY; then
+  git diff --stat "$local_ref1" "$local_ref2"
+else
+  git diff "$local_ref1" "$local_ref2"
+fi
+
+echo ""
+
+# Show commits diff
+echo "${BOLD}Commit Summary:${RESET}"
+echo ""
+echo "${YELLOW}Commits in $BRANCH1 but not in $BRANCH2:${RESET}"
+git log --oneline "$local_ref2".."$local_ref1" 2>/dev/null | head -10 || echo "  (none)"
+
+echo ""
+echo "${YELLOW}Commits in $BRANCH2 but not in $BRANCH1:${RESET}"
+git log --oneline "$local_ref1".."$local_ref2" 2>/dev/null | head -10 || echo "  (none)"
+
+echo ""

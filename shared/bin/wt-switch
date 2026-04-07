@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# --------------------------------------------------
+# wt-switch — Switch to a git worktree
+# --------------------------------------------------
+
+# shellcheck source=_wt-lib.sh
+source "$(dirname "$0")/_wt-lib.sh"
+
+usage() {
+  echo ""
+  echo "${BOLD}wt-switch${RESET} — Switch to a git worktree"
+  echo ""
+  echo "${BOLD}Usage:${RESET}"
+  echo "  wt-switch [<branch>] [options]"
+  echo "  wt switch  [<branch>] [options]"
+  echo ""
+  echo "${BOLD}Description:${RESET}"
+  echo "  Print the path of an existing worktree to allow switching to it."
+  echo "  Use with: cd \"\$(wt switch <branch>)\""
+  echo ""
+  echo "${BOLD}Options:${RESET}"
+  echo "  --cd           Print only the path (for use with: cd \"\$(wt switch --cd)\")"
+  echo "  --pick, -p     Force interactive selection with fzf (if available)"
+  echo "  --help, -h     Show this help"
+  echo ""
+  echo "${BOLD}Examples:${RESET}"
+  echo "  wt switch                    # Interactive mode if fzf is available"
+  echo "  wt switch my-feature         # Switch to specific worktree"
+  echo "  cd \"\$(wt switch my-feature --cd)\"  # For shell function integration"
+  echo ""
+  exit 1
+}
+
+# --------------------------------------------------
+# Argument parsing
+# --------------------------------------------------
+
+BRANCH=""
+CD_MODE=false
+PICK_MODE=false
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --help|-h)    usage ;;
+    --cd)         CD_MODE=true ;;
+    --pick|-p)    PICK_MODE=true ;;
+    -*)           error "Unknown option: $1"; usage ;;
+    *)            BRANCH="$1" ;;
+  esac
+  shift
+done
+
+# --------------------------------------------------
+# Main
+# --------------------------------------------------
+
+REPO_ROOT=$(get_repo_root)
+
+# If no branch specified or --pick is set, use interactive mode
+if [[ -z "$BRANCH" ]] || $PICK_MODE; then
+  # Try to use fzf for interactive selection
+  if command -v fzf &>/dev/null; then
+    step "Select a worktree:"
+    BRANCH=$(cd "$REPO_ROOT" && git worktree list --porcelain | awk '/^worktree / { path=$2 } /^branch / { branch=substr($2, index($2,"refs/heads/")+11); print branch " (" path ")" }' | fzf --no-multi --preview 'echo {}' | awk '{print $1}') || {
+      error "No worktree selected"
+      exit 1
+    }
+  else
+    # Fallback: list available worktrees
+    if [[ -z "$BRANCH" ]]; then
+      error "No branch specified and fzf not available"
+      info "Available worktrees:"
+      if [[ -d "$REPO_ROOT/.worktrees" ]]; then
+        cd "$REPO_ROOT"
+        git worktree list --porcelain | awk '/^worktree / { path=$2 } /^branch / { branch=substr($2, index($2,"refs/heads/")+11); printf "  %s\n", branch }'
+      else
+        echo "  (none)"
+      fi
+      echo ""
+      echo "Usage: wt switch <branch>"
+      exit 1
+    fi
+  fi
+fi
+
+WORKTREE_PATH=$(get_worktree_path "$BRANCH" "$REPO_ROOT")
+
+# Check if the worktree exists
+if [[ ! -d "$WORKTREE_PATH" ]]; then
+  error "Worktree for branch '$BRANCH' not found at: $WORKTREE_PATH"
+  info "Available worktrees:"
+  if [[ -d "$REPO_ROOT/.worktrees" ]]; then
+    cd "$REPO_ROOT"
+    git worktree list --porcelain | awk '/^worktree / { path=$2 } /^branch / { branch=substr($2, index($2,"refs/heads/")+11); printf "  %s\n", branch }'
+  else
+    echo "  (none)"
+  fi
+  exit 1
+fi
+
+# Check if it's still a valid worktree
+if ! git worktree list | grep -q "$WORKTREE_PATH"; then
+  warn "Worktree directory exists but is not registered. You may need to run: wt clean"
+  exit 1
+fi
+
+# Print the path so it can be used with cd
+if ! $CD_MODE; then
+  success "Ready to switch to branch '$BRANCH'"
+fi
+echo "$WORKTREE_PATH"

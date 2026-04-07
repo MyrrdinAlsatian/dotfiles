@@ -28,6 +28,7 @@ set -euo pipefail
 # shellcheck source=_wt-lib.sh
 source "$(dirname "$0")/_wt-lib.sh"
 
+
 usage() {
   echo ""
   echo "${BOLD}wt${RESET} — Git worktree mini-CLI"
@@ -35,6 +36,10 @@ usage() {
   echo "${BOLD}Usage:${RESET}"
   echo "  wt create  <branch> [options]   Create a worktree for <branch>"
   echo "  wt list                         List all worktrees"
+  echo "  wt switch  [<branch>]           Switch to a worktree (interactive if no branch)"
+  echo "  wt status  [<branch>]           Show status of worktrees"
+  echo "  wt info    <branch>             Show detailed info about a worktree"
+  echo "  wt diff    <branch1> [<branch2>] Compare branches"
   echo "  wt remove  <branch>             Remove a worktree and delete its branch"
   echo "  wt clean                        Prune broken worktrees and dead refs"
   echo "  wt merge   <branch>             Merge a branch into main and clean up"
@@ -50,9 +55,14 @@ shift 2>/dev/null || true
 case "$CMD" in
   create)  exec "$(dirname "$0")/wt-create" "$@" ;;
   list)    exec "$(dirname "$0")/wt-list"   "$@" ;;
+  switch)  exec "$(dirname "$0")/wt-switch" "$@" ;;
+  status)  exec "$(dirname "$0")/wt-status" "$@" ;;
+  info)    exec "$(dirname "$0")/wt-info"   "$@" ;;
+  diff)    exec "$(dirname "$0")/wt-diff"   "$@" ;;
   remove)  exec "$(dirname "$0")/wt-remove" "$@" ;;
   clean)   exec "$(dirname "$0")/wt-clean"  "$@" ;;
   merge)   exec "$(dirname "$0")/wt-merge"  "$@" ;;
   --help|-h|help) usage ;;
   *) usage ;;
 esac
+
