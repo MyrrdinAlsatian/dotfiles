@@ -595,3 +595,10 @@ phpuse() {
   sudo update-alternatives --set php /usr/bin/php$1
   php -v
 }
+
+
+# tree like function : return the folder architecture as a tree:
+
+ctree(){
+    ls -R | grep ":$" | sed -e 's/:$//' -e 's/[^-][^\/]*\//--/g' -e 's/^/   /' -e 's/-/|/'
+}
